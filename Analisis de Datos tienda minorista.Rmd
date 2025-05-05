@@ -1,0 +1,107 @@
+---
+title: "Análisis Exploratorio de Datos - Sample Superstore"
+author: "Bryan Gutiérrez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(scales)
+```
+
+## 📅 1. Carga y exploración de datos
+
+```{r load-data}
+# Reemplaza con la ruta correcta si es necesario
+superstore <- read_excel("Sample - Superstore.xls")
+glimpse(superstore)
+summary(superstore)
+```
+
+## 🩹 2. Limpieza de datos
+
+```{r clean-data}
+superstore <- superstore %>%
+  select(-`Row ID`, -`Postal Code`) %>%
+  distinct()
+
+superstore <- superstore %>%
+  mutate(Order.Date = as.Date(`Order Date`),
+         Ship.Date = as.Date(`Ship Date`))
+
+lapply(superstore[, sapply(superstore, is.character)], unique)
+```
+
+## 📊 3. Análisis descriptivo
+
+### Ventas y ganancias por categoría
+
+```{r sales-by-category}
+superstore %>%
+  group_by(Category) %>%
+  summarise(Sales = sum(Sales), Profit = sum(Profit)) %>%
+  ggplot(aes(x = Category, y = Sales, fill = Category)) +
+  geom_col() +
+  labs(title = "Ventas por Categoría", y = "Ventas")
+```
+
+### Productos más vendidos y rentables
+
+```{r top-products}
+superstore %>%
+  group_by(`Product Name`) %>%
+  summarise(Sales = sum(Sales), Profit = sum(Profit)) %>%
+  arrange(desc(Sales)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(`Product Name`, Sales), y = Sales)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 Productos más Vendidos", y = "Ventas", x = "Producto")
+```
+
+## 🌍 4. Análisis geográfico
+
+```{r geo-analysis}
+superstore %>%
+  group_by(State) %>%
+  summarise(Sales = sum(Sales), Profit = sum(Profit)) %>%
+  arrange(desc(Profit)) %>%
+  ggplot(aes(x = reorder(State, Profit), y = Profit, fill = Profit > 0)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Ganancias por Estado", y = "Ganancia", x = "Estado") +
+  scale_fill_manual(values = c("red", "green"), labels = c("Pérdida", "Ganancia"))
+```
+
+## ⏳ 5. Análisis temporal
+
+```{r time-analysis}
+superstore %>%
+  mutate(Month = floor_date(Order.Date, "month")) %>%
+  group_by(Month) %>%
+  summarise(Sales = sum(Sales)) %>%
+  ggplot(aes(x = Month, y = Sales)) +
+  geom_line(color = "darkblue") +
+  labs(title = "Ventas Mensuales", y = "Ventas", x = "Mes")
+```
+
+## 📦 6. Descuentos vs Ganancias
+
+```{r discount-profit}
+ggplot(superstore, aes(x = Discount, y = Profit)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Relación entre Descuento y Ganancia")
+```
+
+## ✅ Conclusiones
+
+- La categoría más rentable es Tecnologia, con un margen de ganancia elevado en comparación con otras.
+- Estados como Texas, Illinois y Pennsylvania generan pérdidas netas, lo cual sugiere una revisión de estrategia comercial en esas regiones.
+- Se observa una correlación negativa entre los descuentos y las ganancias; aplicar altos descuentos puede reducir significativamente la rentabilidad.
+- Las ventas tienden a incrementarse a finales de año, indicando un posible efecto estacional o vinculado a promociones.
+- Algunos productos con altos niveles de venta no necesariamente son los más rentables, lo cual puede guiar decisiones sobre el portafolio de productos.
